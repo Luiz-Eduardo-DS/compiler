@@ -1,448 +1,290 @@
 import java.util.List;
 
 public class Parser {
-  private static int currentPosition;
-  private static List<Tokens> tokenList;
+    private final List<Tokens> tokens;
+    private int currentTokenIndex;
 
-  public Parser(List<Tokens> tokens) {
-    tokenList = tokens;
-  }
-
-  public void parse() {
-    synAnalysis();
-  }
-
-  private static void synAnalysis() {
-    Semantic.symbolStack.push(new String[] {"mark", null});
-
-    if (match("program")) {
-      nextToken();
-      if (isIdentifier()) {
-        nextToken();
-        if (match(";")) {
-          nextToken();
-          varDeclaration();
-          subProgramDeclarations();
-          compoundCommand();
-          Semantic.cleanStack();
-          if (!match(".")) {
-            System.out.println(
-                "ERROR: EXPECTED '.' BUT "
-                    + getCurrentTokenValue()
-                    + " FOUND IN LINE "
-                    + getCurrentTokenLine());
-          } else {
-            System.out.println("PASCAL PROGRAM ACCEPTED");
-          }
-        } else {
-          System.out.println(
-              "ERROR: EXPECTED ';' BUT "
-                  + getCurrentTokenValue()
-                  + " FOUND IN LINE "
-                  + getCurrentTokenLine());
-        }
-      } else {
-        System.out.println(
-            "ERROR: EXPECTED IDENTIFIER BUT "
-                + getCurrentTokenValue()
-                + " FOUND IN LINE "
-                + getCurrentTokenLine());
-      }
-    } else {
-      System.out.println(
-          "ERROR: EXPECTED 'program' BUT "
-              + getCurrentTokenValue()
-              + " FOUND IN LINE "
-              + getCurrentTokenLine());
+    public Parser(List<Tokens> tokens) {
+        this.tokens = tokens;
+        this.currentTokenIndex = 0;
     }
-  }
 
-  private static void varDeclaration() {
-    if (match("var")) {
-      nextToken();
-      if (isIdentifier()) {
-        while (!match("begin") && !match("procedure")) {
-          listIdentifier();
-        }
-      } else {
-        System.out.println(
-            "ERROR: IDENTIFIER EXPECTED BUT '"
-                + getCurrentTokenValue()
-                + "' FOUND IN LINE "
-                + getCurrentTokenLine());
-      }
-    } else {
-      System.out.println("'var' not found, but " + getCurrentTokenValue());
-    }
-  }
-
-  private static void subProgramDeclarations() {
-    while (!match("begin")) {
-      subProgramDeclaration();
-    }
-  }
-
-  private static void subProgramDeclaration() {
-    if (match("procedure")) {
-      nextToken();
-      Semantic.symbolStack.push(new String[] {getCurrentTokenValue(), "procedure"});
-      Semantic.symbolStack.push(new String[] {"mark", null});
-      if (isIdentifier()) {
-        nextToken();
-        if (match("(")) {
-          nextToken();
-          while (!match(")")) {
-            listIdentifier(1);
-          }
-          if (match(")")) {
-            nextToken();
-            if (match(";")) {
-              nextToken();
-              varDeclaration();
-              subProgramDeclarations();
-              compoundCommand();
-              Semantic.cleanStack();
+    public void programa() {
+        if (currentTokenIndex < tokens.size()) {
+            if (tokens.get(currentTokenIndex).getToken().equals("program")) {
+                currentTokenIndex++;
+                if (tokens.get(currentTokenIndex).getClassification().equals("IDENTIFIER")) {
+                    currentTokenIndex++;
+                    if (tokens.get(currentTokenIndex).getToken().equals(";")) {
+                        currentTokenIndex++;
+                        declaracoes_variaveis();
+                        declaracoes_de_subprogramas();
+                        comando_composto();
+                        if (tokens.get(currentTokenIndex).getToken().equals(".")) {
+                            System.out.println("Programa analisado com sucesso!");
+                        } else {
+                            System.out.println("Esperado '.' no final do programa");
+                            System.out.print(tokens.get(currentTokenIndex).getLine() + " " + tokens.get(currentTokenIndex).getToken());
+                        }
+                    } else {
+                        System.out.println("Esperado ';' após o nome do programa");
+                        System.out.print(tokens.get(currentTokenIndex).getLine() + " " + tokens.get(currentTokenIndex).getToken());
+                    }
+                } else {
+                    System.out.println("Esperado um identificador após 'program'");
+                    System.out.print(tokens.get(currentTokenIndex).getLine() + " " + tokens.get(currentTokenIndex).getToken());
+                }
             } else {
-              if (match("end")) {
-                System.out.println("Dont found ; but found end...");
-              } else {
-                System.out.println(
-                    "ERROR: EXPECTED ';' BUT "
-                        + getCurrentTokenValue()
-                        + " FOUND IN LINE "
-                        + getCurrentTokenLine());
-              }
+                System.out.println("Esperada a palavra-chave 'program'");
+                System.out.print(tokens.get(currentTokenIndex).getLine() + " " + tokens.get(currentTokenIndex).getToken());
             }
-          } else {
-            System.out.println(
-                "ERROR: EXPECTED ')' BUT "
-                    + getCurrentTokenValue()
-                    + " FOUND IN LINE "
-                    + getCurrentTokenLine());
-          }
-        } else if (match(";")) {
-          System.out.println("No parenthesis found, but ';' in line " + getCurrentTokenLine());
-          nextToken();
-          varDeclaration();
-          subProgramDeclaration();
-          compoundCommand();
-          Semantic.cleanStack();
-        } else {
-          System.out.println(
-              "ERROR: EXPECTED '(' OR ';' BUT "
-                  + getCurrentTokenValue()
-                  + " FOUND IN LINE "
-                  + getCurrentTokenLine());
         }
-      } else {
-        System.out.println(
-            "ERROR: EXPECTED IDENTIFIER BUT "
-                + getCurrentTokenValue()
-                + " IN LINE "
-                + getCurrentTokenLine());
-      }
-    } else {
-      System.out.println("procedure dont found but " + getCurrentTokenValue());
-      nextToken();
     }
-  }
 
-  private static boolean isIdentifier() {
-    return getCurrentTokenType().equals("IDENTIFIER");
-  }
-
-  private static void listIdentifier() {
-    listIdentifier(0);
-  }
-
-  private static void listIdentifier(int isArgs) {
-    if (isArgs == 1 && match(")")) {
-      return;
-    }
-    if (isIdentifier()) {
-      Semantic.identifierStack.push(getCurrentTokenValue());
-      nextToken();
-      if (match(",")) {
-        nextToken();
-        if (isArgs == 1) {
-          listIdentifier(1);
-        } else {
-          listIdentifier();
+    private void declaracoes_variaveis() {
+        if (tokens.get(currentTokenIndex).getToken().equals("var")) {
+            currentTokenIndex++;
+            lista_declaracoes_variaveis();
         }
-      } else if (match(":")) {
-        nextToken();
-        if (match("integer") || match("real") || match("boolean")) {
-          String typeStack = getCurrentTokenValue();
-          nextToken();
-          if (match(";")) {
-            nextToken();
-            Semantic.stackAppend(typeStack);
-          } else {
-            if (isArgs == 1 && match(")")) {
-              Semantic.stackAppend(typeStack);
-              return;
-            } else if (isArgs == 1) {
-              System.out.println(
-                  "ERROR: EXPECTED ')' OR ';' BUT "
-                      + getCurrentTokenValue()
-                      + " FOUND IN LINE "
-                      + getCurrentTokenLine());
+    }
+
+    private void lista_declaracoes_variaveis() {
+        if (tokens.get(currentTokenIndex).getClassification().equals("IDENTIFIER")) {
+            lista_de_identificadores();
+            if (tokens.get(currentTokenIndex).getToken().equals(":")) {
+                currentTokenIndex++;
+                tipo();
+                if (tokens.get(currentTokenIndex).getToken().equals(";")) {
+                    currentTokenIndex++;
+                    lista_declaracoes_variaveis();
+                } else {
+                    System.out.println("Esperado ';' após o tipo");
+                }
             } else {
-              System.out.println(
-                  "ERROR: EXPECTED ';' BUT FOUND "
-                      + getCurrentTokenValue()
-                      + " IN LINE "
-                      + getCurrentTokenLine());
+                System.out.println("Esperado um tipo após os ':'");
             }
-          }
-        } else {
-          System.out.println(
-              "ERROR: DATA TYPE EXPECTED BUT FOUND "
-                  + getCurrentTokenValue()
-                  + " IN LINE "
-                  + getCurrentTokenLine());
         }
-      } else {
-        System.out.println(
-            "ERROR: EXPECTED ':' BUT FOUND "
-                + getCurrentTokenValue()
-                + " IN LINE "
-                + getCurrentTokenLine());
-      }
-    } else {
-      System.out.println(
-          "ERROR: IDENTIFIER EXPECTED BUT FOUND "
-              + getCurrentTokenValue()
-              + " IN LINE "
-              + getCurrentTokenLine());
-      nextToken();
     }
-  }
 
-  private static void compoundCommand() {
-    if (match("begin")) {
-      nextToken();
-      while (!match("end")) {
-        commandList();
-      }
-      if (match("end")) {
-        nextToken();
-        if (match(";")) {
-          nextToken();
-        } else {
-          System.out.println(
-              "ERROR: EXPECTED ';' BUT "
-                  + getCurrentTokenValue()
-                  + " FOUND IN LINE "
-                  + getCurrentTokenLine());
-        }
-      } else {
-        System.out.println(
-            "ERROR: EXPECTED 'end' BUT "
-                + getCurrentTokenValue()
-                + " IN LINE "
-                + getCurrentTokenLine());
-      }
-    } else {
-      System.out.println(
-          "ERROR: EXPECTED 'begin' BUT "
-              + getCurrentTokenValue()
-              + " IN LINE "
-              + getCurrentTokenLine());
-    }
-  }
-
-  private static void commandList() {
-    commands();
-    if (match(";")) {
-      nextToken();
-      commandList();
-    }
-  }
-
-  private static void commands() {
-    if (isIdentifier()) {
-      Semantic.typeControlStack.push(Semantic.findInStack(getCurrentTokenValue()));
-      nextToken();
-      if (match(":=")) {
-        nextToken();
-        expressionAnalyzer();
-        Semantic.assignStackChecker();
-      } else if (match("(")) {
-        nextToken();
-        expressionList();
-        if (match(")")) {
-          nextToken();
-          if (match(";")) {
-            nextToken();
-            Semantic.clearTopTypeStack();
-          } else {
-            System.out.println(
-                "ERROR: EXPECTED ';' BUT "
-                    + getCurrentTokenValue()
-                    + " FOUND IN LINE "
-                    + getCurrentTokenLine());
-          }
-        } else {
-          System.out.println(
-              "ERROR: EXPECTED ')' BUT "
-                  + getCurrentTokenValue()
-                  + " FOUND IN LINE "
-                  + getCurrentTokenLine());
-        }
-      } else if (match(";")) {
-        nextToken();
-        Semantic.clearTopTypeStack();
-      } else {
-        System.out.println(
-            "ERROR: EXPECTED ':=' OR ';' OR '();' BUT "
-                + getCurrentTokenValue()
-                + " FOUND IN LINE "
-                + getCurrentTokenLine());
-      }
-    } else {
-      if (getCurrentTokenType().equals("RESERVED_WORD")) {
-        if (match("begin")) {
-          nextToken();
-          compoundCommand();
-        } else if (match("if")) {
-          nextToken();
-          expressionAnalyzer();
-          if (match("then")) {
-            Semantic.verifyBooleanResult();
-            nextToken();
-            commands();
-            if (match("else")) {
-              nextToken();
-              commandList();
+    private void lista_de_identificadores() {
+        do {
+            if (tokens.get(currentTokenIndex).getClassification().equals("IDENTIFIER")) {
+                currentTokenIndex++;
+                if (tokens.get(currentTokenIndex).getToken().equals(",")) {
+                    currentTokenIndex++;
+                } else {
+                    break;
+                }
+            } else {
+                System.out.println("Esperado um identificador");
             }
-          } else {
-            System.out.println(
-                "ERROR: EXPECTED 'then' BUT "
-                    + getCurrentTokenValue()
-                    + " FOUND IN LINE "
-                    + getCurrentTokenLine());
-          }
-        } else if (match("while")) {
-          nextToken();
-          expressionAnalyzer();
-          if (match("do")) {
-            Semantic.verifyBooleanResult();
-            nextToken();
-            commandList();
-          } else {
-            System.out.println(
-                "ERROR: EXPECTED 'do' BUT "
-                    + getCurrentTokenValue()
-                    + " FOUND IN LINE "
-                    + getCurrentTokenLine());
-          }
+        } while (true);
+    }
+
+    private void declaracoes_de_subprogramas() {
+
+        if (tokens.get(currentTokenIndex).getToken().equals("procedure")) {
+            declaracao_de_subprograma();
         }
-      } else {
-        System.out.println(
-            "ERROR: NO COMMAND FOUND: "
-                + getCurrentTokenValue()
-                + " IN LINE "
-                + getCurrentTokenLine());
-      }
     }
-  }
 
-  private static void expressionAnalyzer() {
-    expressionSimple();
-    if (match("RELATIONAL_OPERATOR")) {
-      nextToken();
-      expressionSimple();
-      Semantic.typeStackChecker(true, true);
-    }
-  }
-
-  private static void expressionList() {
-    expressionAnalyzer();
-    if (match(",")) {
-      nextToken();
-      expressionList();
-    }
-  }
-
-  private static void expressionSimple() {
-    if (match("+") || match("-")) {
-      nextToken();
-    }
-    isTerm();
-    if (match("ADDITIVE_OPERATOR")) {
-      nextToken();
-      expressionSimple();
-      Semantic.typeStackChecker(true, true);
-    }
-  }
-
-  private static boolean isTerm() {
-    isFactor();
-    if (match("MULTIPLICATION_OPERATOR")) {
-      nextToken();
-      isTerm();
-      Semantic.typeStackChecker(true, true);
-    }
-    return true;
-  }
-
-  private static void isFactor() {
-    if (isIdentifier()) {
-      Semantic.typeControlStack.push(Semantic.findInStack(getCurrentTokenValue()));
-      nextToken();
-      if (match("(")) {
-        nextToken();
-        expressionList();
-        if (match(")")) {
-          nextToken();
-          Semantic.typeControlStack.pop();
+    private void declaracao_de_subprograma() {
+        if (tokens.get(currentTokenIndex).getToken().equals("procedure")) {
+            currentTokenIndex++;
+            if (tokens.get(currentTokenIndex).getClassification().equals("IDENTIFIER")) {
+                currentTokenIndex++;
+                argumentos();
+                if (tokens.get(currentTokenIndex).getToken().equals(";")) {
+                    currentTokenIndex++;
+                    declaracoes_variaveis();
+                    declaracoes_de_subprogramas();
+                    comando_composto();
+                } else {
+                    System.out.println("Esperado ';' após declaração de subprograma");
+                }
+            } else {
+                System.out.println("Esperado identificador após 'procedure'");
+            }
         } else {
-          System.out.println(
-              "ERROR: EXPECTED ')' BUT "
-                  + getCurrentTokenValue()
-                  + " FOUND IN LINE "
-                  + getCurrentTokenLine());
+            System.out.println("Esperada a palavra-chave 'procedure'");
         }
-      }
-    } else if (match("INTEGER") || match("REAL") || match("BOOLEAN")) {
-      Semantic.typeControlStack.push(getCurrentTokenValue().toLowerCase());
-      nextToken();
-    } else if (match("not")) {
-      nextToken();
-      isFactor();
-    } else if (match("(")) {
-      nextToken();
-      expressionAnalyzer();
-      if (match(")")) {
-        nextToken();
-      } else {
-        System.out.println(
-            "ERROR: EXPECTED ')' BUT "
-                + getCurrentTokenValue()
-                + " FOUND IN LINE "
-                + getCurrentTokenLine());
-      }
     }
-  }
 
-  private static boolean match(String expected) {
-    return getCurrentTokenValue().equals(expected);
-  }
+    private void argumentos() {
+        if (tokens.get(currentTokenIndex).getToken().equals("(")) {
+            currentTokenIndex++;
+            lista_de_parametros();
+            if (tokens.get(currentTokenIndex).getToken().equals(")")) {
+                currentTokenIndex++;
+            } else {
+                System.out.println("Esperado ')' após lista de parâmetros");
+            }
+        } else {
+            System.out.println("Esperado '(' após 'procedure'");
+        }
+    }
 
-  private static void nextToken() {
-    currentPosition++;
-  }
+    private void lista_de_parametros() {
+        lista_de_identificadores();
+        if (tokens.get(currentTokenIndex).getToken().equals(":")) {
+            currentTokenIndex++;
+            tipo();
+            while (tokens.get(currentTokenIndex).getToken().equals(",")) {
+                currentTokenIndex++;
+                lista_de_identificadores();
+                if (tokens.get(currentTokenIndex).getToken().equals(":")) {
+                    currentTokenIndex++;
+                    tipo();
+                } else {
+                    System.out.println("Esperado ':' após lista de identificadores");
+                }
+            }
+        } else {
+            System.out.println("Esperado ':' após lista de identificadores");
+        }
+    }
 
-  static String getCurrentTokenValue() {
-    return tokenList.get(currentPosition).getToken();
-  }
+    private void tipo() {
+        if (tokens.get(currentTokenIndex).getToken().equals("integer") ||
+                tokens.get(currentTokenIndex).getToken().equals("real") ||
+                tokens.get(currentTokenIndex).getToken().equals("boolean")) {
+            currentTokenIndex++;
+        } else {
+            System.out.println("Esperado um tipo (integer, real, boolean)");
+        }
+    }
 
-  static String getCurrentTokenType() {
-    return tokenList.get(currentPosition).getClassification();
-  }
+    private void comando_composto() {
+        if (tokens.get(currentTokenIndex).getToken().equals("begin")) {
+            currentTokenIndex++;
+            comandos_opcionais();
+            if (tokens.get(currentTokenIndex).getToken().equals("end")) {
+                currentTokenIndex++;
+            } else {
+                System.out.println("Esperado 'end' após comandos opcionais");
+            }
+        } else {
+            System.out.println("Esperado 'begin' para iniciar o comando composto");
+        }
+    }
 
-  static Integer getCurrentTokenLine() {
-    return tokenList.get(currentPosition).getLine();
-  }
+    private void comandos_opcionais() {
+        lista_de_comandos();
+    }
+
+    private void lista_de_comandos() {
+        comando();
+        while (tokens.get(currentTokenIndex).getToken().equals(";")) {
+            currentTokenIndex++;
+            if (tokens.get(currentTokenIndex).getToken().equals("end")) {
+                break;
+            } else {
+                comando();
+            }
+
+        }
+    }
+
+    private void comando() {
+        if (tokens.get(currentTokenIndex).getClassification().equals("IDENTIFIER")) {
+            currentTokenIndex++;
+            if (tokens.get(currentTokenIndex).getToken().equals(":=")) {
+                currentTokenIndex++;
+                expressao();
+            }
+        } else if (tokens.get(currentTokenIndex).getToken().equals("if")) {
+            currentTokenIndex++;
+            expressao();
+            if (tokens.get(currentTokenIndex).getToken().equals("then")) {
+                currentTokenIndex++;
+                comando();
+            } else {
+                System.out.println("Esperado 'then' após expressão do if");
+            }
+        } else if (tokens.get(currentTokenIndex).getToken().equals("else")) {
+            parte_else();
+
+        } else if (tokens.get(currentTokenIndex).getToken().equals("while")) {
+            currentTokenIndex++;
+            expressao();
+            if (tokens.get(currentTokenIndex).getToken().equals("do")) {
+                currentTokenIndex++;
+                comando();
+            } else {
+                System.out.println("Esperado 'do' após expressão do while");
+            }
+
+        } else if (tokens.get(currentTokenIndex).getToken().equals("begin")) {
+            comando_composto();
+        } else {
+            System.out.print(tokens.get(currentTokenIndex).getLine() + " token: " + tokens.get(currentTokenIndex).getToken() + "\n");
+            System.out.println("Comando inválido");
+        }
+    }
+
+    private void parte_else() {
+        if (tokens.get(currentTokenIndex).getToken().equals("else")) {
+            currentTokenIndex++;
+            comando();
+        }
+    }
+
+
+    private void expressao() {
+        expressao_simples();
+        if (tokens.get(currentTokenIndex).getToken().equals("=") ||
+                tokens.get(currentTokenIndex).getToken().equals("<") ||
+                tokens.get(currentTokenIndex).getToken().equals(">") ||
+                tokens.get(currentTokenIndex).getToken().equals("<=") ||
+                tokens.get(currentTokenIndex).getToken().equals(">=") ||
+                tokens.get(currentTokenIndex).getToken().equals("<>")) {
+            currentTokenIndex++;
+            expressao_simples();
+        }
+    }
+
+    private void expressao_simples() {
+        termo();
+        while (tokens.get(currentTokenIndex).getToken().equals("+") ||
+                tokens.get(currentTokenIndex).getToken().equals("-") ||
+                tokens.get(currentTokenIndex).getToken().equals("or")) {
+            currentTokenIndex++;
+            termo();
+        }
+    }
+
+    private void termo() {
+        fator();
+        while (tokens.get(currentTokenIndex).getToken().equals("*") ||
+                tokens.get(currentTokenIndex).getToken().equals("/") ||
+                tokens.get(currentTokenIndex).getToken().equals("and")) {
+            currentTokenIndex++;
+            fator();
+        }
+    }
+
+    private void fator() {
+        if (tokens.get(currentTokenIndex).getClassification().equals("IDENTIFIER") ||
+                tokens.get(currentTokenIndex).getClassification().equals("INTEGER") ||
+                tokens.get(currentTokenIndex).getClassification().equals("REAL") ||
+                tokens.get(currentTokenIndex).getToken().equals("true") ||
+                tokens.get(currentTokenIndex).getToken().equals("false")) {
+
+            currentTokenIndex++;
+        } else if (tokens.get(currentTokenIndex).getToken().equals("(")) {
+            currentTokenIndex++;
+            expressao();
+            if (tokens.get(currentTokenIndex).getToken().equals(")")) {
+                currentTokenIndex++;
+            } else {
+                System.out.println("Esperado ')' após expressão");
+            }
+        } else if (tokens.get(currentTokenIndex).getToken().equals("not")) {
+            currentTokenIndex++;
+            fator();
+        } else {
+            System.out.println("esse token esta dando erro: " + tokens.get(currentTokenIndex).getToken() + " | linha " + tokens.get(currentTokenIndex).getLine());
+            System.out.println("Fator inválido");
+        }
+    }
 }
