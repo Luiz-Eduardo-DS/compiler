@@ -252,6 +252,11 @@ public class Parser {
             termo();
         }
     }
+    private void sinal(){
+        if (tokens.get(currentTokenIndex).getToken().equals("-")||tokens.get(currentTokenIndex).getToken().equals("+")){
+            currentTokenIndex++;
+        }
+    }
 
     private void termo() {
         fator();
@@ -264,6 +269,7 @@ public class Parser {
     }
 
     private void fator() {
+        sinal();
         if (tokens.get(currentTokenIndex).getClassification().equals("IDENTIFIER") ||
                 tokens.get(currentTokenIndex).getClassification().equals("INTEGER") ||
                 tokens.get(currentTokenIndex).getClassification().equals("REAL") ||
@@ -282,7 +288,8 @@ public class Parser {
         } else if (tokens.get(currentTokenIndex).getToken().equals("not")) {
             currentTokenIndex++;
             fator();
-        } else {
+        }
+        else {
             System.out.println("esse token esta dando erro: " + tokens.get(currentTokenIndex).getToken() + " | linha " + tokens.get(currentTokenIndex).getLine());
             System.out.println("Fator inválido");
         }
