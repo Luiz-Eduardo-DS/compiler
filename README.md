@@ -2,8 +2,6 @@
 
 Este é um projeto da matéria de CONSTRUÇÃO DE COMPILADORES I, onde foi proposto criar um compilador da linguagem Pascal.
 
-### Autores: [Gerson Fragoso](https://github.com/gersonfragoso), [Luiz Eduardo](https://github.com/Luiz-Eduardo-DS)
-
 Aqui vai uma pequena explicação sobre o que nosso código faz e a lógica que implementamos:
 
 ## Lexer
@@ -159,3 +157,5 @@ Este módulo é responsável por seguir a lógica sintática e garantir que a en
 ## Main
 
 - Lê o caminho do teste da gramática e chama os compiladores lexer e parser.
+
+### Autores: [Gerson Fragoso](https://github.com/gersonfragoso), [Luiz Eduardo](https://github.com/Luiz-Eduardo-DS)
